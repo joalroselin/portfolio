@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
+    <title>签到</title>
+    <script src="js/rem.js"></script>
+    <script src="js/vue.min.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+    <!--<script type="text/javascript" src="js/layer.js"></script>-->
+
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+
+    <script src="https://unpkg.com/element-ui/lib/index.js">
+
+    </script>
+
+</head>
+<link type="text/css" rel="stylesheet" href="css/css.css"/>
+<link type="text/css" rel="stylesheet" href="css/layer.css"/>
+
+
+<body>
+
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+    }
+
+    td, th {
+        text-align: center;
+        border: 1px solid #dddddd;
+    }
+
+    .text {
+        font-size: 14px;
+        text-align: center;
+    }
+
+
+</style>
+
+
+<div id="app">
+    <el-dialog
+            title="签到规则"
+            :visible.sync="dialogVisible"
+            width="30%"
+            :before-close="handleClose">
+        <ul>
+            <li style="margin-bottom: 8px" v-for="item in rules">
+                <p>{{item}}</p>
+            </li>
+        </ul>
+    </el-dialog>
+
+    <header>
+        <div style="display: flex;width: 100%;height:1rem;">
+            <div style="width:15%;height: 1rem;display: flex;align-items: center;justify-content: center">
+                <img
+                        @click="drawer = true"
+                        style="height: 45%;width: 45%;"
+                        src="img/button.png"/>
+            </div>
+            <div style="width:85%;height: 1rem;display: flex;align-items: center;justify-content: center">
+                <div style="width: 65%;height:100%; display: flex;align-items: center;justify-content: flex-end;">
+                    <span style="margin-right: 64px">签到</span>
+                </div>
+                <div style="width: 35%;height:100%;">
+                    <el-alert
+                            center="true"
+                            type="success"
+                            :closable="false">
+                        <p slot="title"
+                           style="width: 80px; height: 100%;font-size: 12px;white-space:nowrap; overflow:hidden;text-overflow:ellipsis;text-align: center">
+                            {{account}}</p>
+                    </el-alert>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <el-drawer
+            title="导航栏"
+            :with-header="false"
+            :visible.sync="drawer"
+            :direction="direction"
+            :before-close="handleClose"
+            ref="drawer"
+            size="35%"
+            modal="true">
+        <ul>
+            <li @click="jilu(1)">
+                <el-card class="box-card">
+                    <div class="text item">
+                        积分兑换
+                    </div>
+                </el-card>
+            </li>
+            <li @click="jilu(2)">
+                <el-card class="box-card">
+                    <div class="text item">
+                        签到记录
+                    </div>
+                </el-card>
+            </li>
+            <li @click="jilu(3)">
+                <el-card class="box-card">
+                    <div class="text item">
+                        兑换记录
+                    </div>
+                </el-card>
+            </li>
+            <li @click="loginOut">
+                <el-card class="box-card">
+                    <div class="text item">
+                        退出登陆
+                    </div>
+                </el-card>
+            </li>
+        </ul>
+    </el-drawer>
+
+    <div class="body">
+        <div class="logo">
+            <img src="img/logo.png"/>
+        </div>
+        <div class="getmoney">
+            <img src="img/bannar.png"/>
+        </div>
+        <div class="usedata">
+            <span><i class=""><img src="img/time.png"></i>累计天数:<strong>{{this.cumulative}}天</strong></span>
+            <span><i><img src="img/jifen.png"></i>当前积分:<strong>{{this.integral}}积分</strong></span>
+        </div>
+        <div class="timelist">
+            <ul>
+                <li
+                        v-for="(item,index) in datas"
+                        :key="item.day"
+                        :class="[
+						signnum===0?(index<6?'listdata':'lis_maxtdata'):
+						(item.isRepair>0?(index<6?'listdata':'lis_maxtdata'):
+						((index<signnum&&index<6)?'listdata2':(index<6?'listdata':(signnum===7?'lis_maxtdata2':'lis_maxtdata'))))
+						]"
+
+                >
+                    <span>第{{index+1}}天</span>
+                    <i :class="[item.isRepair>0?'buqian':'']" v-if="item.isRepair>0">
+                        <img alt=''
+                             src="img/buqian.png"></i>
+                    <strong v-if="index<6" :class="[signnum===7?'colorbai':'colorhui']">
+                        +{{item.getGold}}
+                    </strong>
+                </li>
+            </ul>
+            <div style="width: 100%;margin-top: 0.2rem;color: deepskyblue;z-index: 88;position: relative;">
+                <div class="btn1" @click="daydata(datas)">
+                    连续已签到
+                    <span class="huangse">{{this.signnum}}</span>
+                    天
+                </div>
+                <div class="qiandaoguize" @click="dialogVisible = true">
+                    <span style="font-size: smaller;">签到规则 ></span>
+                </div>
+            </div>
+        </div>
+        <div class="footerStyle">
+            <div class="foot">
+                <a href="javascript:;" class="left"><img src="img/arrow.png"></a>
+                <a href="javascript:;" class="rigth"><img src="img/right.png"></a>
+                <div class="foot_img">
+                    <ul>
+                        <li v-for="item in dataimg" @click="openWindow(item)">
+                            <a>
+                                <img :src="item.pic">
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <inquire :lishi="lishi" v-if="lishi" @changecomponentdata="componentdatachange"></inquire>
+        <inquire1 :lishi="qiandao" v-if="qiandao" @changecomponentdata="componentdatachange"></inquire1>
+        <showmassage :showmasage="showmasage" @islogin="login"></showmassage>
+        <jifen :duihuan="duihuan" v-if="duihuan" @changecomponentdata="componentdatachange"></jifen>
+        <loading v-if="loading"></loading>
+    </div>
+</div>
+</body>
+<script>
+    //页面组件loading组件
+    Vue.component('loading', {
+        template: '<div class="showlogin">' +
+            '<div class="loading"><img src="img/loading.gif" alt=""></div>' +
+            '</div>'
+    });
+
+    //查询历史记录组件
+    Vue.component('inquire', {
+        props: ['lishi'],
+        data() {
+            return {
+                account: "",  //会员账号
+                type: [], //积分兑换类型
+                type2: [], //签到记录类型
+                btn: ['积分兑换记录'],
+                indexs: 0, //切换tab索引
+                jifentr: ['用户名', '内容', '领取时间', '备注'], //积分兑换表头
+                // qiandaotr: ['用户名', '金币', '签到时间', '备注'] //签到表头    用户名     金币   签到日期    备注
+            }
+        },
+        template: '<div class="showlogin">' +
+            '<div class="bj" id="bj">' +
+            '<a class="a_close" @click="a_close()"></a>' +
+            '<div class="kong"></div>' +
+            '<ul class="jilu_ul">' +
+            '<li v-for="(item,index) in btn" :class="{active:indexs==index}"  key="index" @click="li_btn(index)">{{item}}</li>' +
+            '</ul>' +
+            '<div class="mull">' +
+            '<table class="table" v-show="indexs==0">' +
+            '<tr>' +
+            '<th v-for="(item,index) in jifentr" :key="index">{{item}}</th>' +
+            '</tr>' +
+            '<tr  v-for="(item,index) in type" :key="index">' +
+            '<td>{{item.account}}</td>' +
+            '<td>{{item.num}}</td>' +
+            '<td>{{item.created_at}}</td>' +
+            '<td>{{item.desc}}</td>' +
+            '</tr>' +
+            '</table>' +
+            '</div>' +
+            '</div>' +
+            '</div>',
+        methods: {
+            lishiajax: function () {
+
+                let that = app;
+
+                if (this.account == "" || this.account == null || this.account == undefined) {
+                    // this.account = localStorage.getItem('account')
+                    this.account = that.account;
+                }
+
+                axios.get(that.host + '/api/pointsRedemptionRecord', {params: {
+                        "account": this.account,
+
+                    }}).then((rel) => {
+                    let typedata = []
+                    let typedata2 = []
+                    for (let i = 0; i < rel.data.data.length; i++) {
+                        // if (rel.data.data[i].type === 1 || rel.data.data[i].type === 4 || rel.data.data[i].type === 5) {
+                            typedata.push(rel.data.data[i])
+                            this.type = typedata
+                        // } else {
+                        //     typedata2.push(rel.data.data[i])
+                        //     this.type2 = typedata2
+                        // }
+                    }
+
+                })
+            },
+
+            li_btn: function (index) {
+                this.indexs = index
+            },
+            a_close: function () {
+                this.$emit("changecomponentdata")
+            }
+
+        },
+        mounted: function () {
+            this.lishiajax()
+        },
+    });
+
+    Vue.component('inquire1', {
+        props: ['qiandao'],
+        data() {
+            return {
+                account: "",  //会员账号
+                type: [], //积分兑换类型
+                type2: [], //签到记录类型
+                btn: ['签到记录'],
+                indexs: 0, //切换tab索引
+                // jifentr: ['用户名', '兑换次数', '领取时间', '备注'], //积分兑换表头
+                qiandaotr: ['用户名', '内容', '签到时间', '备注'] //签到表头    用户名     金币   签到日期    备注
+            }
+        },
+        template: '<div class="showlogin">' +
+            '<div class="bj" id="bj">' +
+            '<a class="a_close" @click="a_close()"></a>' +
+            '<div class="kong"></div>' +
+            '<ul class="jilu_ul">' +
+            '<li v-for="(item,index) in btn" :class="{active:indexs==index}"  key="index" @click="li_btn(index)">{{item}}</li>' +
+            '</ul>' +
+            '<div class="mull">' +
+            '<table class="table" v-show="indexs==0">' +
+            '<tr>' +
+            '<th v-for="(item,index) in qiandaotr" :key="index">{{item}}</th>' +
+            '</tr>' +
+            '<tr  v-for="(item,index) in type2" :key="index">' +
+            '<td>{{item.account}}</td>' +
+            '<td>{{item.getGold}}</td>' +
+            '<td>{{item.created_at}}</td>' +
+            '<td>{{item.desc}}</td>' +
+            '</tr>' +
+            '</table>' +
+            '</div>' +
+            '</div>' +
+            '</div>',
+        methods: {
+            lishiajax: function () {
+
+                let that = app;
+
+                if (this.account == "" || this.account == null || this.account == undefined) {
+                    // this.account = localStorage.getItem('account')
+                    this.account = that.account;
+                }
+
+                axios.get(that.host + '/api/exchangelog', {
+                    params: {
+                        "account": this.account,
+
+                    }}).then((rel) => {
+                    let typedata = []
+                    let typedata2 = []
+                    for (let i = 0; i < rel.data.data.length; i++) {
+                        // if (rel.data.data[i].type === 1 || rel.data.data[i].type === 4 || rel.data.data[i].type === 5) {
+                        //     typedata.push(rel.data.data[i])
+                        //     this.type = typedata
+                        // } else {
+                            typedata2.push(rel.data.data[i])
+                            this.type2 = typedata2
+                        // }
+                    }
+
+                })
+            },
+
+            li_btn: function (index) {
+                this.indexs = index
+            },
+            a_close: function () {
+                this.$emit("changecomponentdata")
+            }
+
+        },
+        mounted: function () {
+            this.lishiajax()
+        },
+    });
+
+    //登入组件
+    Vue.component('showmassage', {
+
+        data() {
+            return {
+                account: this.account,  //会员账号
+                uid: this.uid, //会员ID
+                status: true, 	 //弹窗状态
+                logintext: "登录",
+            }
+        },
+
+
+        props: ['showmasage', 'islogin'],
+        template: '<div class="showlogin" v-if="status">' +
+            '<div class="bj">' +
+            // '<a class="a_close" @click="a_close()"></a>' +
+            '<div class="form">' +
+            '<input type="text" value="" v-model="account" placeholder="请输入会员账号" />' +
+            '<input type="text" value="" v-model="uid" placeholder="请输入会员ID" />' +
+            '<a href="javascript:;" class="btn_a" @click="btn_login()">{{logintext}}</a>' +
+            '</div>' +
+            '</div>' +
+            '</div>',
+        methods: {
+            a_close: function () {
+                this.status = !this.status
+            },
+            btn_login: function () {
+                let that = app;
+                this.logintext = "登录中..."
+                axios.get(that.host + '/api/userLogin', {
+                    params: {
+                        "account": this.account,
+                        "uid": this.uid,
+                    }
+                }).then((rel) => {
+                    if (rel.data.code !== 0) {
+                        if (rel.data.code === 108) {
+                            this.$confirm(`${rel.data.msg}`, '温馨提示', {
+                                confirmButtonText: '确定',
+                                type: 'success',
+                                center: true,
+                                customClass: 'customClass1',
+                            }).then(() => {
+                                // var tempwindow = window.open('_blank');
+                                // tempwindow.location = that.electronics;
+                                that.loginOut();
+                                this.logintext = "登录";
+                            }).catch(() => {
+                                that.loginOut();
+                                this.logintext = "登录";
+                            });
+                        } else {
+                            this.$confirm(`${rel.data.msg}`, '温馨提示', {
+                                confirmButtonText: '点击前往电子升级',
+                                type: 'success',
+                                center: true
+                            }).then(() => {
+                                var tempwindow = window.open('_blank');
+                                tempwindow.location = that.electronics;
+                                this.logintext = "登录";
+                                that.loginOut();
+                            }).catch(() => {
+                                that.loginOut();
+                                this.logintext = "登录";
+                            });
+                        }
+                    } else {
+                        // localStorage.setItem('account', this.account);
+                        // localStorage.setItem('uid', this.uid);
+                        that.account = this.account;
+                        that.uid = this.uid;
+                        this.status = !this.status;
+                        this.$parent.init();
+                        this.$emit("islogin", this.account, this.uid)
+                    }
+                });
+            }
+        },
+        mounted: function () {
+            // let dengru = localStorage.getItem('account')
+            let dengru = this.account;
+
+            if (dengru) {
+                this.status = !this.status
+            }
+        }
+    });
+
+    //兑换红包组件
+    Vue.component('jifen', {
+        props: ['duihuan'],
+
+
+        data() {
+            return {
+                account: this.account,  //会员账号
+                num: ['1', '2', '3'], //兑换枪红包次数
+                many: "",  //抢红包次数
+                status: true, 	 //弹窗状态
+                action: 0 //高亮激活状态
+            }
+        },
+
+        template: '<div class="showlogin">' +
+            '<div class="bj">' +
+            '<a class="a_close" @click="a_close()"></a>' +
+            '<div class="get_div">' +
+            '<h4>选择兑换免费抢红包次数</h4>' +
+            '<div class="get_abtn">' +
+            '<a href="javascript:;"  v-for="(item,index) in num" :data-size="item" :class="{active:index===action}"   @click=getsize($event,index)>{{item}}次</a>' +
+            '</div>' +
+            '<a href="javascript:;" class="btn_a" @click="sunmit">确认</a>' +
+            '</div>' +
+            '</div>' +
+            '</div>',
+        methods: {
+            getsize: function (event, index) {
+                let that = app;
+
+                this.many = event.currentTarget.getAttribute("data-size")
+                // this.account = localStorage.getItem('account')
+                this.account = that.account;
+
+                this.action = index
+            },
+            sunmit: function () {
+                let that = app;
+
+                if (this.many == "" || this.many == null || this.many == undefined) {
+                    this.many = 1
+                }
+
+                if (this.account == "" || this.account == null || this.account == undefined) {
+                    // this.account = localStorage.getItem('account')
+                    this.account = that.account;
+                }
+
+                axios.get(that.host + '/api/exchange', {params: {
+                        "account": this.account,
+                        "many": this.many,
+                    }}).then((rel) => {
+                    if (rel.data.code == 0) {
+                        this.$confirm(`${rel.data.msg}`, '温馨提示', {
+                            confirmButtonText: '去抢红包',
+                            type: 'success',
+                            center: true
+                        }).then(() => {
+                            window.open('https://www.fa6766.com:6766/')
+                            // var tempwindow = window.open('_blank');
+                            // tempwindow.location = this.qhburl;
+                            // this.init();
+                        }).catch(() => {
+                            // window.open('https://www.baidu.com/')
+                            // this.init();
+                            // tempwindow.location = this.qhburl;
+                        });
+                    } else {
+                        this.$alert(`${rel.data.msg}`, '温馨提示', {
+                            confirmButtonText: '确定',
+                            type: 'error',
+                            center: true,
+                        }).then(() => {
+                            that.duihuan = false;
+                            that.init();
+                        }).catch((action) => {
+                            if (action === 'close') {
+                                that.duihuan = false;
+                                that.init();
+                            }
+                        });
+                    }
+                })
+            },
+
+            a_close: function () {
+                this.$emit("changecomponentdata")
+            }
+        }
+    });
+
+    var app = new Vue({
+
+        el: "#app",
+
+        data: {
+            datas: [
+                // {day: 1, getGold: 1, Integral: 0.5, isRepair: 0},
+                // {day: 2, getGold: 1, Integral: 0.5, isRepair:1},
+                // {day: 3, getGold: 3, Integral: 0.5, isRepair: 0},
+                // {day: 4, getGold: 2, Integral: 0.5, isRepair: 0},
+                // {day: 5, getGold: 5, Integral: 0.5, isRepair: 0},
+                // {day: 6, getGold: 2, Integral: 0.5, isRepair: 0},
+                // {day: 7, getGold: 0, Integral: 0.5, isRepair: 0},
+            ], //json数据
+            day: "", //天数
+            // host: "http://192.168.9.2:18881",
+            // host: 'https://api.qd6766.com/',
+            // host: 'http://www.amhd.com:8083/',
+            host: 'https://vip.6766vip.net/',
+            isSign: "", //是否可以签到
+            isRepair: "", //是否可以补签
+            islogin: false,  //登入状态
+            duihuan: false, //兑换积分显示
+            lishi: false,//历史记录显示
+            qiandao: false,
+            // showLogin: true,
+            // account: localStorage.getItem('account'),  //会员账号
+            // uid: localStorage.getItem('uid'),//会员ID
+            account: '',
+            uid: '',
+            oneweek: "" || "0", //当前一周的签到天数
+            signnum: 0,//总签到天数
+            showmasage: "",
+            _style: "",
+            xinxitext: false, //是否弹窗对话框
+            xinxihtml: "",//弹窗信息内容
+            integral: "" || "0", //签到积分
+            loading: false, //页面loading
+            // dataimg: ['img/mianxi.png', 'img/hongbao.png', 'img/zhenren.png', 'img/dianzi.png', 'img/mianxi.png', 'img/hongbao.png', 'img/zhenren.png', 'img/dianzi.png'] //底部图片
+            dataimg: [],
+            rules: [],
+            item: [],
+            czurl: '',
+            qhburl: 'https://www.fa6766.com:6766/',
+            electronics: '',
+            drawer: false,
+            direction: 'ltr',
+            dialogVisible: false,
+        },
+
+        mounted: function () {
+            // this.init();
+            this.getPic();
+        },
+
+        methods: {
+            init: function () {
+                // if (localStorage.getItem('account') != null) {
+                if (this.account !== '' && this.account !== undefined) {
+                    this.loading = true
+                    let index = []
+                    // this.account = localStorage.getItem('account')
+                    // this.uid = localStorage.getItem('uid')
+                    axios.get(this.host + '/api/beforeSign', {
+                        params: {
+                            "account": this.account,
+                            "uid": this.uid,
+                        }
+                    }).then((rel) => {
+                        this.datas = rel.data.data.day;
+                        this.signnum = JSON.parse(JSON.stringify(rel.data.data.num))
+                        this.integral = JSON.parse(JSON.stringify(rel.data.data.signIntegral))
+                        this.cumulative = JSON.parse(JSON.stringify(rel.data.data.cumulative))
+                        //cumulative
+
+
+                        const a = JSON.parse(JSON.stringify(rel.data.data.day))
+
+                        Object.keys(a).forEach(((value, index) => {
+                            if (a[index].isRepair > 0) {
+                                this.item.push({
+                                    index,
+                                    value: a[index]
+                                })
+                            }
+                        }));
+                        // this.isSign = JSON.parse(JSON.stringify(rel.data.data.isRepair))
+                        this.loading = false
+                    })
+                }
+            },
+
+            getPic: function () {
+                axios.post("https://api.qd6766.com"+ '/api/getpic').then((rel) => {
+                    this.dataimg = JSON.parse(JSON.stringify(rel.data.data))
+                });
+                // 获取签到规则
+                axios.post("https://api.qd6766.com" + '/api/setting').then((rel) => {
+                    const result = JSON.parse(JSON.stringify(rel.data.data));
+                    const rule = result.rule;
+                    const length = rule.match(/\r/ig);
+                    length.push('\r');
+                    Object.keys(length).forEach(((value, index) => {
+                        if (index !== 0) {
+                            this.rules.push(rule.split('\r')[index])
+                        }
+                    }));
+
+                    this.czurl = result.czurl;
+                    this.qhburl = result.qhburl;
+                    this.electronics = result.electronics;
+                })
+            },
+
+            daydata: function (items) {
+                this.loading = true;
+
+                const length = this.item.length;
+                // const length = 100;
+
+                let that = this;
+
+                if (length < 1) {
+                    that.qiandaoFun('/api/beginSign');
+                }
+
+                if (length > 0) {
+                    const index = JSON.parse(JSON.stringify(this.item))[0].index;
+                    // const selectedItem = JSON.parse(JSON.stringify(items))[index];
+                    const lastitem = JSON.parse(JSON.stringify(items))[index].isRepair;
+                    // const lastitem = 1
+                    if (lastitem > 0) {
+                        if (lastitem === 1) {
+                            that.buqian('/api/repairSign')
+                        } else {
+                            this.$confirm(`需要先补签才能签到哦`, '温馨提示', {
+                                confirmButtonText: '充值补签',
+                                cancelButtonText: '放弃补签',
+                                type: 'warning',
+                                center: true,
+                                customClass: 'customClass',
+                                distinguishCancelAndClose: true,
+                                // showClose: false,
+                                // cancelButtonClass      取消按钮的自定义类名
+                                // confirmButtonClass     确定按钮的自定义类名
+                            }).then(() => {
+                                // this.init();
+                                // window.open('http://www.baidu.com')
+                                // window.location.href = this.czurl;
+                                var tempwindow = window.open('_blank');
+                                tempwindow.location = this.czurl;
+                                // window.open(this.czurl);
+                                this.init();
+                            }).catch((action) => {
+                                if (action === 'close') {
+                                    this.loading = false;
+                                }
+
+                                if (action === 'cancel') {
+                                    that.qiandaoFun('/api/beginSign');
+                                }
+                            });
+                        }
+                    } else {
+                        that.qiandaoFun('/api/beginSign');
+                    }
+                }
+            },
+
+            qiandaoFun: function (url) {
+                this.qiandaobuqian(url)
+            },
+
+            buqian: function (url) {
+                this.qiandaobuqian(url)
+            },
+
+            qiandaobuqian: function (url) {
+                axios.get(this.host + url, {
+                    params: {
+                        "account": this.account,
+                        "uid": this.uid,
+                    }
+                }).then((rel) => {
+                    if (rel.data.code === 0) {
+                        if (rel.data.data.signnum === 7) {
+                            this.$confirm(`恭喜获得${rel.data.data.many}次免费红包抽奖机会`, '恭喜', {
+                                confirmButtonText: '去抢红包',
+                                type: 'success',
+                                center: true
+                            }).then(() => {
+                                var tempwindow = window.open('_blank');
+                                tempwindow.location = this.qhburl;
+                                // this.init();
+                            }).catch(() => {
+                                // this.init();
+                                tempwindow.location = this.qhburl;
+                            });
+                        } else {
+                            this.$alert(`${rel.data.msg}`, '温馨提示', {
+                                confirmButtonText: '确定',
+                                type: 'success',
+                                center: true,
+                                confirmButtonClass: 'confirmButtonClass',
+                            }).then(() => {
+                                this.init()
+                            }).catch(() => {
+                                this.init()
+                            });
+                        }
+                    } else {
+                        this.$alert(`${rel.data.msg}`, '温馨提示', {
+                            confirmButtonText: '确定',
+                            type: 'error',
+                            center: true,
+                            confirmButtonClass: 'confirmButtonClass',
+                        }).catch(() => {
+                            this.init()
+                        });
+                    }
+                    this.loading = false
+                })
+            },
+
+            showjifen: function () {
+                this.$refs.drawer.closeDrawer();
+                this.duihuan = true
+            },
+
+            showduihuan: function () {
+                this.$refs.drawer.closeDrawer();
+                this.lishi = true
+            },
+
+            showqiandao: function () {
+                this.$refs.drawer.closeDrawer();
+                this.qiandao = true
+            },
+
+            jilu: function (index) {
+                switch (index) {
+                    case 1:
+                        this.showjifen();
+                        break;
+                    case 2:
+                        this.showqiandao();
+                        break;
+                    case 3:
+                        this.showduihuan();
+                        break;
+                    default:
+                        break;
+                }
+            },
+
+            loginOut: function () {
+                localStorage.clear();
+                this.$refs.drawer.closeDrawer();
+                window.location.reload();
+            },
+
+            componentdatachange: function () {
+                this.duihuan = false;
+                this.lishi = false;
+                this.qiandao = false
+            },
+
+            loading: function () {
+                this.loading = false
+            },
+
+            login: function (account, uid) {
+                this.account = account;
+                this.uid = uid;
+            },
+
+            handleClose(done) {
+                done();
+            },
+
+            openWindow(item) {
+                window.open(item.url)
+            },
+        },
+        updated: function () {
+            this.oneweek = document.getElementsByClassName('listdata2').length
+        },
+    })
+</script>
+</html>
